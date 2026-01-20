@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>原料實驗室計算系統</title>
+    <style>
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: #f4f7f9; padding: 20px; color: #333; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .header { text-align: center; border-bottom: 3px solid #3498db; padding-bottom: 15px; margin-bottom: 20px; }
+        .main-select { background: #e8f0fe; padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
+        select { padding: 10px; font-size: 1.1em; width: 400px; border-radius: 5px; border: 1px solid #3498db; cursor: pointer; }
+        .section { margin-top: 20px; padding: 20px; border: 1px solid #e1e8ed; border-radius: 10px; background: #fcfcfc; position: relative; }
+        .section-title { font-size: 1.1em; font-weight: bold; color: #2980b9; margin-bottom: 15px; border-left: 5px solid #3498db; padding-left: 10px; }
+        .row { display: flex; gap: 15px; margin-bottom: 12px; flex-wrap: wrap; }
+        .input-group { flex: 1; min-width: 180px; }
+        label { display: block; font-size: 0.85em; margin-bottom: 5px; color: #7f8c8d; }
+        input { width: 100%; padding: 10px; border: 1px solid #ccd6dd; border-radius: 6px; font-size: 1em; box-sizing: border-box; }
+        .btn-container { text-align: center; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+        button { padding: 12px 30px; border: none; border-radius: 6px; cursor: pointer; font-size: 1em; font-weight: bold; margin: 5px; transition: 0.2s; }
+        .btn-calc { background: #3498db; color: white; }
+        .btn-add { background: #9b59b6; color: white; padding: 8px 15px; font-size: 0.9em; margin: 10px 0; }
+        .btn-del { background: #e74c3c; color: white; padding: 5px 12px; font-size: 0.8em; position: absolute; right: 15px; top: 15px; border-radius: 4px; border: none; }
+        #output { margin-top: 25px; padding: 20px; background: #2c3e50; color: #ecf0f1; border-radius: 10px; line-height: 1.6; font-family: monospace; white-space: pre-wrap; font-size: 1.05em; }
+        .highlight { color: #f1c40f; font-weight: bold; }
+        .pass-tag { background: #2ecc71; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.9em; }
+        .fail-tag { background: #e74c3c; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.9em; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header"><h2>原料實驗室計算系統</h2></div>
+
+    <div class="main-select">
+        <label>請選擇試驗項目：</label>
+        <select id="testSelector" onchange="switchTest()">
+            <option value="al_gel">氫氧化鋁膠含量分析</option>
+            <option value="formal">甲醛含量測定 (碘量法)</option>
+            <option value="lod">乾燥檢重試驗</option>
+        </select>
+    </div>
+
+    <div class="row">
+        <div class="input-group">
+            <label>實驗批號 (Batch No.)</label>
+            <input type="text" id="batchNo" placeholder="請輸入批號">
+        </div>
+    </div>
+
+    <div id="al_gel_area">
+        <div class="section">
+            <div class="section-title">Step 1: NC (空白試驗)</div>
+            <div class="row">
+                <div class="input-group"><label>Factor (硫酸鋅)</label><input type="number" id="al_factor" value="1.0000" step="0.0001"></div>
+                <div class="input-group"><label>NC R1 消耗量(ml)</label><input type="number" id="al_nc_r1" step="0.01"></div>
+                <div class="input-group"><label>NC R2 消耗量(ml)</label><input type="number" id="al_nc_r2" step="0.01"></div>
+            </div>
+        </div>
+        <div id="al_sample_container"></div>
+        <button class="btn-add" onclick="addSample('al')">+ 新增檢品欄位</button>
+
+        <div class="section">
+            <div class="section-title">Step 3: PC (陽性對照)</div>
+            <div class="row">
+                <div class="input-group"><label>PC R1 重(g)</label><input type="number" id="al_pc_w1" step="0.0001"></div>
+                <div class="input-group"><label>PC R1 消耗(ml)</label><input type="number" id="al_pc_v1" step="0.01"></div>
+            </div>
+            <div class="row">
+                <div class="input-group"><label>PC R2 重(g)</label><input type="number" id="al_pc_w2" step="0.0001"></div>
+                <div class="input-group"><label>PC R2 消耗(ml)</label><input type="number" id="al_pc_v2" step="0.01"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="formal_area" class="hidden">
+        <div class="section">
+            <div class="section-title">Step 1: 滴定液參數與對照組</div>
+            <div class="row">
+                <div class="input-group"><label>硫代硫酸鈉 Factor</label><input type="number" id="fm_f_na" value="1.0000" step="0.0001"></div>
+                <div class="input-group"><label>碘液 Factor</label><input type="number" id="fm_f_i" value="1.0000" step="0.0001"></div>
+                <div class="input-group"><label>A: 陰性對照消耗量(ml)</label><input type="number" id="fm_a" step="0.01"></div>
+            </div>
+        </div>
+        <div id="fm_sample_container"></div>
+        <button class="btn-add" onclick="addSample('fm')">+ 新增甲醛檢品</button>
+    </div>
+
+    <div id="lod_area" class="hidden">
+        <div class="section">
+            <div class="section-title">Step 1: 選擇檢品與規格</div>
+            <select id="lod_type">
+                <option value="0.5">M14001 氯化鈉 (< 0.5%)</option>
+                <option value="0.5">M13011 乳糖 (< 0.5%)</option>
+                <option value="2">M34002 磷酸一鉀 (< 2%)</option>
+                <option value="0.25">M34006 碳酸氫鈉 (< 0.25%)</option>
+                <option value="1">M33001 酚紅 (< 1%)</option>
+                <option value="0.1">M34001 氯化鉀 (< 0.1%)</option>
+            </select>
+        </div>
+        <div class="section">
+            <div class="section-title">Step 2: 稱重數據</div>
+            <div class="row">
+                <div class="input-group"><label>空玻璃皿重 W (g)</label><input type="number" id="lod_w" step="0.0001"></div>
+                <div class="input-group"><label>稱量樣品+玻璃皿 W1 (g)</label><input type="number" id="lod_w1" step="0.0001"></div>
+                <div class="input-group"><label>乾燥後樣品+玻璃皿 W2 (g)</label><input type="number" id="lod_w2" step="0.0001"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-container">
+        <button class="btn-calc" onclick="runCalculation()">執行數據計算</button>
+    </div>
+
+    <div id="output">尚未執行計算...</div>
+</div>
+
+<script>
+function switchTest() {
+    const test = document.getElementById('testSelector').value;
+    document.getElementById('al_gel_area').classList.toggle('hidden', test !== 'al_gel');
+    document.getElementById('formal_area').classList.toggle('hidden', test !== 'formal');
+    document.getElementById('lod_area').classList.toggle('hidden', test !== 'lod');
+    document.getElementById('output').innerText = "切換試驗項目...";
+}
+
+function addSample(type) {
+    const container = document.getElementById(type + '_sample_container');
+    const div = document.createElement('div');
+    div.className = `section ${type}-item`;
+    container.appendChild(div);
+    refreshLabels(type);
+}
+
+function refreshLabels(type) {
+    const items = document.querySelectorAll(`.${type}-item`);
+    items.forEach((div, index) => {
+        const num = index + 1;
+        const deleteBtn = items.length > 1 ? `<button class="btn-del" onclick="removeSample(this, '${type}')">刪除</button>` : '';
+        if (type === 'al') {
+            div.innerHTML = `<div class="section-title">Step 2: 檢品 ${num}</div>${deleteBtn}
+                <div class="row"><div class="input-group"><label>R1 檢品重(g)</label><input type="number" class="w1" step="0.0001"></div><div class="input-group"><label>R1 消耗量(ml)</label><input type="number" class="v1" step="0.01"></div></div>
+                <div class="row"><div class="input-group"><label>R2 檢品重(g)</label><input type="number" class="w2" step="0.0001"></div><div class="input-group"><label>R2 消耗量(ml)</label><input type="number" class="v2" step="0.01"></div></div>`;
+        } else if (type === 'fm') {
+            div.innerHTML = `<div class="section-title">Step 2: 甲醛檢品 ${num}</div>${deleteBtn}
+                <div class="row">
+                    <div class="input-group"><label>R1 瓶重 X (g)</label><input type="number" class="fx1" step="0.0001"></div>
+                    <div class="input-group"><label>R1 樣品+瓶 Y (g)</label><input type="number" class="fy1" step="0.0001"></div>
+                    <div class="input-group"><label>R1 消耗 B (ml)</label><input type="number" class="fb1" step="0.01"></div>
+                </div>
+                <div class="row">
+                    <div class="input-group"><label>R2 瓶重 X (g)</label><input type="number" class="fx2" step="0.0001"></div>
+                    <div class="input-group"><label>R2 樣品+瓶 Y (g)</label><input type="number" class="fy2" step="0.0001"></div>
+                    <div class="input-group"><label>R2 消耗 B (ml)</label><input type="number" class="fb2" step="0.01"></div>
+                </div>`;
+        }
+    });
+}
+
+function removeSample(btn, type) { btn.parentElement.remove(); refreshLabels(type); }
+addSample('al'); addSample('fm');
+
+function runCalculation() {
+    const test = document.getElementById('testSelector').value;
+    const batch = document.getElementById('batchNo').value || '未填';
+    let report = `【分析報告】 批號：${batch}\n---------------------------------------\n`;
+
+    if (test === 'al_gel') {
+        const f = parseFloat(document.getElementById('al_factor').value || 1);
+        const A = (parseFloat(document.getElementById('al_nc_r1').value||0) + parseFloat(document.getElementById('al_nc_r2').value||0))/2;
+        report += `試驗：氫氧化鋁膠分析 (NC平均: ${A.toFixed(4)} ml)\n\n`;
+        document.querySelectorAll('.al-item').forEach((it, i) => {
+            const w1 = parseFloat(it.querySelector('.w1').value || 0)*1000, v1 = parseFloat(it.querySelector('.v1').value || 0);
+            const w2 = parseFloat(it.querySelector('.w2').value || 0)*1000, v2 = parseFloat(it.querySelector('.v2').value || 0);
+            const r1 = w1 > 0 ? (2.549 * (A - v1) * f * 5 / w1) * 100 : 0;
+            const r2 = w2 > 0 ? (2.549 * (A - v2) * f * 5 / w2) * 100 : 0;
+            report += `檢品 ${i+1}:\n  R1: ${r1.toFixed(4)}%\n  R2: ${r2.toFixed(4)}%\n  平均: <span class="highlight">${((r1+r2)/2).toFixed(4)}%</span>\n\n`;
+        });
+        const pcw1 = parseFloat(document.getElementById('al_pc_w1').value||0)*1000, pcv1 = parseFloat(document.getElementById('al_pc_v1').value||0);
+        const pcw2 = parseFloat(document.getElementById('al_pc_w2').value||0)*1000, pcv2 = parseFloat(document.getElementById('al_pc_v2').value||0);
+        if(pcw1 > 0) {
+            const pcr1 = (2.549*(A-pcv1)*f*5/pcw1)*100, pcr2 = (2.549*(A-pcv2)*f*5/pcw2)*100;
+            report += `---------------------------------------\nPC 結果: R1=${pcr1.toFixed(4)}%, R2=${pcr2.toFixed(4)}%, 平均=${((pcr1+pcr2)/2).toFixed(4)}%\n`;
+        }
+    } else if (test === 'lod') {
+        const spec = parseFloat(document.getElementById('lod_type').value);
+        const name = document.getElementById('lod_type').selectedOptions[0].text;
+        const w = parseFloat(document.getElementById('lod_w').value || 0);
+        const w1 = parseFloat(document.getElementById('lod_w1').value || 0);
+        const w2 = parseFloat(document.getElementById('lod_w2').value || 0);
+        const res = (w1 - w) > 0 ? (1 - (w2 - w) / (w1 - w)) * 100 : 0;
+        const status = res <= spec ? '<span class="pass-tag">合格</span>' : '<span class="fail-tag">不合格</span>';
+        report += `試驗：乾燥檢重 (${name})\n\n結果：<span class="highlight">${res.toFixed(4)}%</span> -> ${status}\n`;
+    } else {
+        const f_na = parseFloat(document.getElementById('fm_f_na').value || 1), f_i = parseFloat(document.getElementById('fm_f_i').value || 1), A = parseFloat(document.getElementById('fm_a').value || 0);
+        report += `試驗：甲醛含量測定\n\n`;
+        document.querySelectorAll('.fm-item').forEach((it, i) => {
+            const calc = (x, y, b) => { const z = (y - x) * 1000; return z > 0 ? ((A - b) * f_na * 10 * 1.5013) / (z * f_i) * 100 : 0; };
+            const r1 = calc(parseFloat(it.querySelector('.fx1').value||0), parseFloat(it.querySelector('.fy1').value||0), parseFloat(it.querySelector('.fb1').value||0));
+            const r2 = calc(parseFloat(it.querySelector('.fx2').value||0), parseFloat(it.querySelector('.fy2').value||0), parseFloat(it.querySelector('.fb2').value||0));
+            const z1 = (parseFloat(it.querySelector('.fy1').value||0) - parseFloat(it.querySelector('.fx1').value||0)) * 1000;
+            const z2 = (parseFloat(it.querySelector('.fy2').value||0) - parseFloat(it.querySelector('.fx2').value||0)) * 1000;
+            report += `檢品 ${i+1}:\n  R1 (Z=${z1.toFixed(1)}mg): ${r1.toFixed(4)}%\n  R2 (Z=${z2.toFixed(1)}mg): ${r2.toFixed(4)}%\n  平均: <span class="highlight">${((r1+r2)/2).toFixed(4)}%</span>\n\n`;
+        });
+    }
+    document.getElementById('output').innerHTML = report.replace(/\n/g, "<br>");
+}
+</script>
+</body>
+</html>
